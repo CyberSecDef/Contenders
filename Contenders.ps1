@@ -22,6 +22,8 @@ Begin{
 	$global:storyTellingMode = $storyTellingMode
 	$global:details = $details
 	
+	clear
+
 	Class Chart{
 		$Chart 		= (New-object System.Windows.Forms.DataVisualization.Charting.Chart);
 		$ChartArea 	= (New-Object System.Windows.Forms.DataVisualization.Charting.ChartArea);
@@ -65,7 +67,7 @@ Begin{
 
 			$this.chartarea.axisy.maximum= ( 5 * $global:count)
 			$this.Chart.ChartAreas.Add($this.ChartArea)
-			$filename = ( $Env:USERPROFILE + "\Pictures\ContendersChart_$( get-date -format 'MMddyyyy_hhmmss' ).png" )
+			$filename = ( "$($pwd)\ContendersChart_$( $this.startTime ).png" )
 			$this.Chart.SaveImage($fileName, "PNG")
 			if($global:wallpaper){
 				if($global:details){
@@ -133,6 +135,9 @@ namespace Wallpaper {
 			$this.Run();
 		}
 		
+		$startTime = (get-date -format 'MMddyyyy_hhmmss');
+		
+		
 		Initialize(){
 			$this.tellStory("Initializing the contenders and the rules of the game.")
 			$this.names = ($this.namePool | sort {get-random})
@@ -163,7 +168,7 @@ namespace Wallpaper {
 					}
 				));
 				if($global:details){
-					$this.tellStory("Citizen $($i), who hails from Tribe $($this.contenders[$i].tribe), has the following stats: STR( $($this.contenders[$i].str) ), CONS( $($this.contenders[$i].cons) ),  DEX( $($this.contenders[$i].dex) ).")
+					$this.tellStory("Contender $( (Get-Culture).TextInfo.ToTitleCase($this.names[ $i ] )  ), who hails from Tribe $($this.contenders[$i].tribe), has the following stats: STR( $($this.contenders[$i].str) ), CONS( $($this.contenders[$i].cons) ),  DEX( $($this.contenders[$i].dex) ).")
 				}
 			}
 		}
@@ -338,6 +343,7 @@ namespace Wallpaper {
 		[void]tellStory($msg){
 			if($global:storyTellingMode){
 				write-host $msg
+				$msg | Add-Content "$($pwd)\ContendersChart_$( $this.startTime ).log"
 			}
 		}
 	}
