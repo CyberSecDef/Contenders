@@ -81,7 +81,7 @@ Begin{
 			
 			
 			$this.Chart.ChartAreas.Add($this.ChartArea)
-			$filename = ( "$($pwd)\ContendersChart_$( $this.startTime ).png" )
+			$filename = ( "$($pwd)\ContendersChart_$( $game.startTime ).png" )
 			$this.Chart.SaveImage($fileName, "PNG")
 			if($global:wallpaper){
 				if($global:details){
@@ -369,3 +369,9 @@ Process{
 End{
 
 }
+
+
+
+
+
+	
