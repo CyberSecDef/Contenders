@@ -4,6 +4,7 @@ param(
 	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][int] $statMin = 10,
 	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][int] $statMax = 19,
 	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][int] $totalAllowedPoints = 45,
+	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $tax,
 	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $loop,
 	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $wallpaper,
 	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $storyTellingMode,
@@ -21,7 +22,7 @@ Begin{
 	$global:wallpaper = $wallpaper
 	$global:storyTellingMode = $storyTellingMode
 	$global:details = $details
-	
+	$global:tax = $tax;
 	clear
 
 	Class Chart{
@@ -51,7 +52,8 @@ Begin{
 			
 			   $legend = New-Object system.Windows.Forms.DataVisualization.Charting.Legend
 			   $legend.name = "Contenders"
-			   $legend.TextWrapThreshold = 50;
+			   $legend.font = "Courier New, 8pt"
+			   $legend.TextWrapThreshold = 75;
 			   $this.chart.Legends.Add($legend)
 			   
 			for($i = 0; $i -lt $global:count; $i++){
@@ -60,7 +62,10 @@ Begin{
 				}
 				
 				$Series = New-Object -TypeName System.Windows.Forms.DataVisualization.Charting.Series
-				$Series.name = "$((Get-Culture).TextInfo.ToTitleCase($game.names[ $i ] ) ) - [Tribe: $($game.contenders[$i].tribe), STR: $($game.contenders[$i].str), CONS: $($game.contenders[$i].cons), DEX: $($game.contenders[$i].dex)]"
+				$Series.name = "$(@('','* ')[($game.contenders[$i].credits -gt 0)])$((Get-Culture).TextInfo.ToTitleCase($game.names[ $i ] ) ) - [Tribe: $($game.contenders[$i].tribe), Credits: $($game.contenders[$i].credits), STR: $($game.contenders[$i].str), CONS: $($game.contenders[$i].cons), DEX: $($game.contenders[$i].dex)]"
+				
+					
+				
 				$this.Chart.Series.Add($Series)
 				$Series.ChartType = $this.ChartTypes::StackedArea
 
@@ -234,6 +239,30 @@ namespace Wallpaper {
 					}
 				}
 			}
+			
+			
+			if($this.index % 50 -eq 0 -and $global:tax){
+				$taxRevenue = 0;
+				$stillAlive = 0
+				for($i = 0; $i -lt 30; $i++){
+					if($this.contenders[$i].credits -gt 0){
+						$this.contenders[$i].credits--
+						$taxRevenue++;
+						if($global:details){
+							$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $i ] ) ) pays a tax.")
+						}
+					}
+				}
+				
+				$taxRecipient = ($this.contenders.getEnumerator() | ? { $_.value.credits -gt 0 } | sort { $_.value.credits } | select -first 1)
+				$taxRecipient.value.credits += $taxRevenue
+				
+				if($global:details){
+					$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $taxRecipient.name ] ) ) recieved a tax repayment.")
+				}
+				
+				
+			}
 
 			if($this.index % 250 -eq 0){
 				for($i = 0; $i -lt 30; $i++){
@@ -374,4 +403,3 @@ End{
 
 
 
-	
