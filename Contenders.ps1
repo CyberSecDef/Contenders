@@ -40,20 +40,30 @@ Begin{
 			$this.Chart.BackColor = iex "[System.Drawing.Color]::White"
 			$this.Chart.BorderColor = 'Black'
 			$this.Chart.BorderDashStyle = 'Solid'
+			$this.Chart.Titles.Add( "PowerShell Battle Arena" )
+			$this.chart.Titles[0].Font = "Arial,16pt"
+			$this.chart.Titles[0].Alignment = "topCenter"
 		}
 		
 		[void]render($game){
 			
 			$game.tellStory("Rendering the timeline chart.")
 			
+			   $legend = New-Object system.Windows.Forms.DataVisualization.Charting.Legend
+			   $legend.name = "Contenders"
+			   $legend.TextWrapThreshold = 50;
+			   $this.chart.Legends.Add($legend)
+			   
 			for($i = 0; $i -lt $global:count; $i++){
 				if($global:details){
 					$game.tellStory("Adding $((Get-Culture).TextInfo.ToTitleCase($game.names[ $i ] ) )  battle run to the chart.")
 				}
 				
 				$Series = New-Object -TypeName System.Windows.Forms.DataVisualization.Charting.Series
+				$Series.name = "$((Get-Culture).TextInfo.ToTitleCase($game.names[ $i ] ) ) - [Tribe: $($game.contenders[$i].tribe), STR: $($game.contenders[$i].str), CONS: $($game.contenders[$i].cons), DEX: $($game.contenders[$i].dex)]"
 				$this.Chart.Series.Add($Series)
 				$Series.ChartType = $this.ChartTypes::StackedArea
+
 
 				$indexes = @()
 				$credits = @()
@@ -66,6 +76,10 @@ Begin{
 			}
 
 			$this.chartarea.axisy.maximum= ( 5 * $global:count)
+			$this.chartarea.axisy.Title = "Credits"
+			$this.chartarea.axisx.Title = "Battles"
+			
+			
 			$this.Chart.ChartAreas.Add($this.ChartArea)
 			$filename = ( "$($pwd)\ContendersChart_$( $this.startTime ).png" )
 			$this.Chart.SaveImage($fileName, "PNG")
@@ -148,7 +162,7 @@ namespace Wallpaper {
 			
 			$this.tellStory("Generating citizen stats.")
 			for($i = 0; $i -lt $global:count; $i++){
-				$totalPoints = get-random -Minimum 20 -maximum $global:totalAllowedPoints
+				$totalPoints = get-random -Minimum 30 -maximum $global:totalAllowedPoints
 				$str = ( get-random -Minimum $global:statMin -Maximum $global:statMax)
 				$totalPoints = $totalPoints - $str
 				$cons = ( get-random -Minimum $global:statMin -Maximum $global:statMax);
@@ -161,7 +175,7 @@ namespace Wallpaper {
 				$this.contenders.add($i,(
 					new-object PSCustomObject -prop @{
 						credits = 5;
-						tribe   = ( get-random -Minimum 0 -Maximum 4 );
+						tribe   = ( get-random -Minimum 0 -Maximum 8 );
 						str     = $str;
 						cons    = $cons;
 						dex     = $dex;
@@ -197,7 +211,7 @@ namespace Wallpaper {
 				$this.updateChart();
 				$this.updateContenderStats();
 				
-				if( ($this.contenders.getEnumerator() | ? { $_.value.credits -gt 0 } | select @{n="mod"; e={ $_.value.tribe % 2 } } | sort {$_.mod} -unique).count -le 1){
+				if( ($this.contenders.getEnumerator() | ? { $_.value.credits -gt 0 } | select @{n="mod"; e={ $_.value.tribe % 4 } } | sort {$_.mod} -unique).count -le 1){
 					break;
 				}
 			}
@@ -328,7 +342,7 @@ namespace Wallpaper {
 				$this.contenders.getEnumerator() | ? { $_.value.credits -gt 0 } | sort {get-random} | select -first 2 | % {
 					$fighters += $_
 				}
-				if( ($fighters[0].value.tribe % 2) -eq ($fighters[1].value.tribe % 2)){
+				if( ($fighters[0].value.tribe % 4) -eq ($fighters[1].value.tribe % 4)){
 					$sameTribe = $true;
 				}else{
 					$sameTribe = $false;
@@ -355,8 +369,3 @@ Process{
 End{
 
 }
-
-
-
-
-
