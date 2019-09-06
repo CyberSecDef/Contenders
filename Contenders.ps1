@@ -8,7 +8,8 @@ param(
 	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $loop,
 	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $wallpaper,
 	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $storyTellingMode,
-	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $details
+	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $details,
+	[Parameter(Mandatory = $false, ValueFromPipeLine = $false,ValueFromPipelineByPropertyName = $false)][switch] $career
 )
 Begin{
 	Add-Type -AssemblyName System.Windows.Forms
@@ -23,6 +24,7 @@ Begin{
 	$global:storyTellingMode = $storyTellingMode
 	$global:details = $details
 	$global:tax = $tax;
+	$global:career = $career;
 	clear
 
 	Class Chart{
@@ -50,21 +52,27 @@ Begin{
 			
 			$game.tellStory("Rendering the timeline chart.")
 			
-			   $legend = New-Object system.Windows.Forms.DataVisualization.Charting.Legend
-			   $legend.name = "Contenders"
-			   $legend.font = "Courier New, 8pt"
-			   $legend.TextWrapThreshold = 75;
-			   $this.chart.Legends.Add($legend)
+			$legend = New-Object system.Windows.Forms.DataVisualization.Charting.Legend
+			$legend.name = "Contenders"
+			$legend.font = "Courier New, 8pt"
+			$legend.TextWrapThreshold = 100;
+			$this.chart.Legends.Add($legend)
 			   
 			for($i = 0; $i -lt $global:count; $i++){
 				if($global:details){
-					$game.tellStory("Adding $((Get-Culture).TextInfo.ToTitleCase($game.names[ $i ] ) )  battle run to the chart.")
+					$game.tellStory("Adding $($game.contenders[$i].name)  battle run to the chart.")
 				}
 				
 				$Series = New-Object -TypeName System.Windows.Forms.DataVisualization.Charting.Series
-				$Series.name = "$(@('','* ')[($game.contenders[$i].credits -gt 0)])$((Get-Culture).TextInfo.ToTitleCase($game.names[ $i ] ) ) - [Tribe: $($game.contenders[$i].tribe), Credits: $($game.contenders[$i].credits), STR: $($game.contenders[$i].str), CONS: $($game.contenders[$i].cons), DEX: $($game.contenders[$i].dex)]"
 				
-					
+				$cName = ""
+				if($game.contenders[$i].credits -gt 0){
+					$cName = "* "
+				}
+				$cName += $game.contenders[$i].name
+				
+				$Series.name = "{0,13} - [Wins: {1,5}, Tribe: {2,2}, Credits: {3,2}, STR: {4,2}, CONS: {5,2}, DEX: {6,2}]" -f $cName, $($game.contenders[$i].wins), $($game.contenders[$i].tribe), $($game.contenders[$i].credits), $($game.contenders[$i].str), $($game.contenders[$i].cons), $($game.contenders[$i].dex) 				
+				
 				
 				$this.Chart.Series.Add($Series)
 				$Series.ChartType = $this.ChartTypes::StackedArea
@@ -73,7 +81,7 @@ Begin{
 				$indexes = @()
 				$credits = @()
 
-				$this.points | ? { $_.citizen -eq $i} | sort { $_.index }  | % {
+				$this.points | ? { $_.citizen -eq $game.contenders[$i].name} | sort { $_.index }  | % {
 					$indexes += $_.index;
 					$credits += $_.credits;
 				}
@@ -145,10 +153,13 @@ namespace Wallpaper {
 	Class Contenders{
 		[int]$index = 0;
 		[int]$iterations = 0;
-		$contenders = @{}
+		$contenders = @()
 		$chart = $null;
 		$names = @()
 		$namePool = @("Edward", "Yov", "Richard", "Nicholus", "Erica", "mario", "brendon", "charles", "Anthony", "hannah", "Jesse", "susan", "samuel", "Joseph", "john", "Matt", "brett", "Kevin", "julia", "dong", "Timothy", "Tonya", "carly", "Avery", "Shawn", "lawrence", "erik", "dianna", "thomas", "Victor", "Douglas", "elliott", "Brandon", "connie", "Lucas", "Terry", "joshua", "Kelly", "Darryl", "aaron", "Patrick", "Carlos", "ben", "ronald", "Stephen", "Zeiss", "Erika", "Spectrum", "Steven", "peter", "amanda", "momal", "Brent", "damon", "garon", "Danny", "Boliong", "Noel", "Michael", "rhiley", "David", "Marquette", "kahlil", "tyler", "jerry", "Sean", "gelsomina", "matthew", "Dwight", "nicholas", "Rachel", "Sara", "rodwin", "Shannon", "Alyssa", "Allysa", "Alan", "Bradley", "jack", "Theodore", "Chris", "Tony", "christopher", "wendy", "yohan", "phan", "alice", "Rachelle", "anja", "Evan", "Melanie", "andrew")
+		
+		$winners = @();
+		
 		Contenders(){
 			$this.tellStory("Let the games begin!")
 			$this.Run();
@@ -160,13 +171,26 @@ namespace Wallpaper {
 		Initialize(){
 			$this.tellStory("Initializing the contenders and the rules of the game.")
 			$this.names = ($this.namePool | sort {get-random})
-			$this.contenders = @{}
+			$this.contenders = @()
 			$this.iterations = 0;
 			$this.index = 0;
 			$this.chart = [Chart]::new();
 			
 			$this.tellStory("Generating citizen stats.")
-			for($i = 0; $i -lt $global:count; $i++){
+			
+			$i = 0;
+			if($global:career){
+				$this.winners.getEnumerator() | sort -descending wins | % {
+					if($i -lt $global:count){
+						$i++;
+						$_.credits = 5;
+						$_.tribe = (get-random -Minimum 0 -Maximum 8 );
+						$this.contenders += $_
+					}
+				}
+			}
+			
+			for($i = $this.contenders.count; $i -lt $global:count; $i++){
 				$totalPoints = get-random -Minimum 30 -maximum $global:totalAllowedPoints
 				$str = ( get-random -Minimum $global:statMin -Maximum $global:statMax)
 				$totalPoints = $totalPoints - $str
@@ -177,17 +201,25 @@ namespace Wallpaper {
 					$dex = 1;
 				}
 
-				$this.contenders.add($i,(
+				$name = (Get-Culture).TextInfo.ToTitleCase($this.names[ $i ] );
+				while( ($this.contenders | select -expand name ) -contains $name){
+					$name = (Get-Culture).TextInfo.ToTitleCase($this.names[ ( get-random -minimum 0 -maximum 90) ] );
+				}
+			
+				$this.contenders += ((
 					new-object PSCustomObject -prop @{
 						credits = 5;
 						tribe   = ( get-random -Minimum 0 -Maximum 8 );
 						str     = $str;
 						cons    = $cons;
 						dex     = $dex;
+						name	= $name
+						wins 	= 0;
 					}
 				));
+				
 				if($global:details){
-					$this.tellStory("Contender $( (Get-Culture).TextInfo.ToTitleCase($this.names[ $i ] )  ), who hails from Tribe $($this.contenders[$i].tribe), has the following stats: STR( $($this.contenders[$i].str) ), CONS( $($this.contenders[$i].cons) ),  DEX( $($this.contenders[$i].dex) ).")
+					$this.tellStory("Contender $($this.contenders[$i].name), who hails from Tribe $($this.contenders[$i].tribe), has the following stats: STR( $($this.contenders[$i].str) ), CONS( $($this.contenders[$i].cons) ),  DEX( $($this.contenders[$i].dex) ).")
 				}
 			}
 		}
@@ -206,7 +238,7 @@ namespace Wallpaper {
 		}
 		
 		Loop(){
-			While( ( $this.contenders.getEnumerator() | ? { $_.value.credits  -gt 0 } ).count -gt 1 ){
+			While( ( $this.contenders | ? { $_.credits  -gt 0 } ).count -gt 1 ){
 				$this.index++;
 				$this.tellStory("")
 				$this.tellStory("Preparing for battle: $($this.index)")
@@ -216,11 +248,28 @@ namespace Wallpaper {
 				$this.updateChart();
 				$this.updateContenderStats();
 				
-				if( ($this.contenders.getEnumerator() | ? { $_.value.credits -gt 0 } | select @{n="mod"; e={ $_.value.tribe % 4 } } | sort {$_.mod} -unique).count -le 1){
+				if( ($this.contenders.getEnumerator() | ? { $_.credits -gt 0 } | select @{n="mod"; e={ $_.tribe % 4 } } | sort {$_.mod} -unique).count -le 1){
 					break;
 				}
 			}
 			
+			$this.contenders.getEnumerator() | ? { $_.credits -gt 0 } | % {
+				$name = $_.name
+				
+				for($i = 0; $i -lt $this.winners.count; $i++){
+					if($this.winners[$i].name -eq $name){
+						$this.winners[$i] = $null
+					}
+				}
+
+				$_.wins++
+				$this.winners += $_;
+			}	
+			
+			if($global:details){
+				$this.tellStory("Current Winning Gladiators")
+				$this.winners  | sort -descending wins  | select Name, Tribe, Wins, Credits, Str, Cons, Dex | ft| out-string | write-host
+			}
 			
 			$this.chart.render($this)
 		}
@@ -228,16 +277,6 @@ namespace Wallpaper {
 		[void]updateContenderStats(){
 			if($global:details){
 				$this.tellStory("Seeing if the remaining contenders are gaining stats.")
-			}
-			if($this.index % 100 -eq 0){
-				for($i = 0; $i -lt 30; $i++){
-					if($this.contenders[$i].credits -gt 0){
-						$this.contenders[$i].cons++
-						if($global:details){
-							$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $i ] ) ) is gaining CONS points.")
-						}
-					}
-				}
 			}
 			
 			
@@ -249,38 +288,50 @@ namespace Wallpaper {
 						$this.contenders[$i].credits--
 						$taxRevenue++;
 						if($global:details){
-							$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $i ] ) ) pays a tax.")
+							$this.tellStory("$($this.contenders[$i].name) pays a tax.")
 						}
 					}
 				}
 				
-				$taxRecipient = ($this.contenders.getEnumerator() | ? { $_.value.credits -gt 0 } | sort { $_.value.credits } | select -first 1)
-				$taxRecipient.value.credits += $taxRevenue
+				$taxRecipient = ($this.contenders.getEnumerator() | ? { $_.credits -gt 0 } | sort { $_.credits } | select -first 1)
+				$taxRecipient.credits += $taxRevenue
 				
 				if($global:details){
-					$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $taxRecipient.name ] ) ) recieved a tax repayment.")
+					$this.tellStory("$($this.contenders[$i].name) recieved a tax repayment.")
 				}
 				
 				
 			}
-
-			if($this.index % 250 -eq 0){
+			
+			if($this.index % $($this.contenders.count * 10 + 125) -eq 0){
 				for($i = 0; $i -lt 30; $i++){
-					if($this.contenders[$i].credits -gt 0){
-						$this.contenders[$i].str++
+					if($this.contenders[$i].credits -gt 0 -and $this.contenders[$i].cons -lt 50){
+						$this.contenders[$i].cons++
 						if($global:details){
-							$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $i] ) ) is gaining STR points.")
+							$this.tellStory("$($this.contenders[$i].name) is gaining CONS points.")
 						}
 					}
 				}
 			}
+			
 
-			if($this.index % 200 -eq 0){
+			if($this.index % $($this.contenders.count * 10 + 75) -eq 0){
 				for($i = 0; $i -lt 30; $i++){
-					if($this.contenders[$i].credits -gt 0){
+					if($this.contenders[$i].credits -gt 0  -and $this.contenders[$i].dex -lt 50){
 						$this.contenders[$i].dex++
 						if($global:details){
-							$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $i ] ) ) is gaining DEX points.")
+							$this.tellStory("$($this.contenders[$i].name) is gaining DEX points.")
+						}
+					}
+				}
+			}
+			
+			if($this.index % $($this.contenders.count * 10 + 100) -eq 0){
+				for($i = 0; $i -lt 30; $i++){
+					if($this.contenders[$i].credits -gt 0  -and $this.contenders[$i].str -lt 50){
+						$this.contenders[$i].str++
+						if($global:details){
+							$this.tellStory("$($this.contenders[$i].name) is gaining STR points.")
 						}
 					}
 				}
@@ -289,96 +340,116 @@ namespace Wallpaper {
 		
 		[void]updateChart(){
 			if($global:details){
-					$this.tellStory("Adding battle record to the chart.")
-				}
-			$this.contenders.getEnumerator() | % {
+				$this.tellStory("Adding battle record to the point collection.")
+			}
+			$this.contenders | % {
 				$this.chart.points += new-object psCustomObject -prop @{
 					index = [int]$this.index; #time
-					citizen = [int]$_.name; #citizen
-					credits = [int]$_.value.credits; #credits
+					citizen = [string]$_.name; #citizen
+					credits = [int]$_.credits; #credits
 				}
 			}
 		}
 		
 		[void] updateCredits($contenders,$results){
 			if($results -eq 0){
-				$this.contenders[ $contenders[0].key ].credits = $this.contenders[ $contenders[0].key ].credits + 1;
-				$this.contenders[ $contenders[1].key ].credits = $this.contenders[ $contenders[1].key ].credits - 1;
+				$contenders[0].credits++
+				$contenders[1].credits--
 				if($global:details){
-					$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[0].name] ) ) earned a credit and $((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[1].name] ) ) lost a credit.")
+					$this.tellStory("$($contenders[0].name) earned a credit and now has `$$($contenders[0].credits).")
+					$this.tellStory("$($contenders[1].name) lost a credit and now has `$$($contenders[1].credits).")
 				}
 			}else{
-				$this.contenders[ $contenders[0].key ].credits = $this.contenders[ $contenders[0].key ].credits - 1;
-				$this.contenders[ $contenders[1].key ].credits = $this.contenders[ $contenders[1].key ].credits + 1;
+				$contenders[0].credits--
+				$contenders[1].credits++
 				if($global:details){
-					$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[1].name] ) ) earned a credit and $((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[0].name] ) )  lost a credit.")
+					$this.tellStory("$($contenders[1].name) earned a credit and now has `$$($contenders[1].credits).")
+					$this.tellStory("$($contenders[0].name) lost a credit and now has `$$($contenders[0].credits).")
+
 				}
 			}
 		}
 		
 		[int]invokeBattle($contenders){
 		
-			$citizen1Hp = 10 * $contenders[0].value.cons + ( get-random -minimum 10 -maximum 20)
-			$citizen2Hp = 10 * $contenders[1].value.cons + ( get-random -minimum 10 -maximum 20)
+			$citizen0Hp = 10 * $contenders[0].cons + ( get-random -minimum 10 -maximum 20)
+			$citizen1Hp = 10 * $contenders[1].cons + ( get-random -minimum 10 -maximum 20)
 
-			$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[0].name] ) ) has $($citizen1Hp) Hit Points.")
-			$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[1].name] ) ) has $($citizen2Hp) Hit Points.")
+			$this.tellStory("$($contenders[0].name ) has $($citizen0Hp) Hit Points.")
+			$this.tellStory("$($contenders[1].name ) has $($citizen1Hp) Hit Points.")
 		
-			while($citizen1Hp -gt 0 -and $citizen2Hp -gt 0){
-				$a1 = (
-						(
-							( ( get-random -minimum 0 -maximum 50) / 50 * $contenders[1].value.str ) -
-							( ( get-random -minimum 0 -maximum 100) / 100 * $contenders[0].value.dex )
-						)
-					)
-				if($a1 -lt 1){ $a1 = 1 }
-				$citizen1Hp = $citizen1Hp - $a1
+			while($citizen0Hp -gt 0 -and $citizen1Hp -gt 0){
 				
-				if($global:details){
-					$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[1].name] ) ) has attacked $((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[0].name] ) ) and caused $($a1) points of damage.")
+				$bonus = $contenders[0].str - 15
+				if($bonus -lt 0){
+					$bonus = 0
 				}
+				$attack = (get-random -minimum 1 -maximum 21) + $bonus
+				if($attack -gt $contenders[0].dex -or (get-random -Minimum 0 -maximum 100) -gt 70){
+					$a1 = (get-random -minimum 1 -maximum 12) + $bonus
+					$citizen0Hp -= $a1
+					
+					if($global:details){
+						$this.tellStory("$($contenders[1].name) has attacked $($contenders[0].name) and caused $($a1) points of damage.")
+					}
+				}else{
+					if($global:details){
+						$this.tellStory("$($contenders[1].name) has missed $($contenders[0].name).")
+					}
+				}
+				
 
-				$a2 = (
-						(
-							( ( get-random -minimum 0 -maximum 50) / 50 * $contenders[0].value.str ) -
-							( ( get-random -minimum 0 -maximum 100) / 100 * $contenders[1].value.dex )
-						)
-					)
-				if($a2 -lt 1){ $a2 = 1 }
-				$citizen2Hp = $citizen2Hp - $a2
-				if($global:details){
-					$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[0].name] ) ) has attacked $((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[1].name] ) ) and caused $($a2) points of damage.")
+
+				$bonus = $contenders[1].str - 15
+				if($bonus -lt 0){
+					$bonus = 0
+				}
+				$attack = (get-random -minimum 1 -maximum 21) + $bonus
+				if($attack -gt $contenders[1].dex  -or (get-random -Minimum 0 -maximum 100) -gt 70){
+					$a1 = (get-random -minimum 1 -maximum 12) + $bonus
+					$citizen1Hp -= $a1
+					
+					if($global:details){
+						$this.tellStory("$($contenders[0].name) has attacked $($contenders[1].name) and caused $($a1) points of damage.")
+					}
+				}else{
+					if($global:details){
+						$this.tellStory("$($contenders[0].name) has missed $($contenders[1].name).")
+					}
 				}
 					
 				if($global:details){
-					$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[0].name] ) ) now has $($citizen1Hp) Hit Points.")
-					$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[1].name] ) ) now has $($citizen2Hp) Hit Points.")
+					$this.tellStory("$($contenders[0].name) now has $($citizen0Hp) Hit Points.")
+					$this.tellStory("$($contenders[1].name) now has $($citizen1Hp) Hit Points.")
 					$this.tellStory("");
 				}
 				
 			}
 			
-			$winner = ( @(1,0)[($citizen1Hp -gt 0)] )
-			$this.tellStory("$((Get-Culture).TextInfo.ToTitleCase($this.names[ $contenders[$winner].name] ) ) won the battle.")
+			$winner = ( @(1,0)[($citizen0Hp -gt 0)] )
+			$this.tellStory("$($contenders[$winner].name) won the battle.")
 							
 			return $winner
 		}
 		
 		[object]getFighters(){
 			$sameTribe = $false;
+			$loops = 0
 			do{
+				$loops++
 				$fighters = @()
-				$this.contenders.getEnumerator() | ? { $_.value.credits -gt 0 } | sort {get-random} | select -first 2 | % {
+				$this.contenders.getEnumerator() | ? { $_.credits -gt 0 } | sort {get-random} | select -first 2 | % {
 					$fighters += $_
 				}
-				if( ($fighters[0].value.tribe % 4) -eq ($fighters[1].value.tribe % 4)){
+				if( ($fighters[0].tribe % 4) -eq ($fighters[1].tribe % 4)){
 					$sameTribe = $true;
 				}else{
 					$sameTribe = $false;
 				}
-			}while($sameTribe -eq $true)
+			}while($sameTribe -eq $true -and $loops -lt 100)
+			
 			if($global:details){
-				$this.tellStory( "$((Get-Culture).TextInfo.ToTitleCase($this.names[ $fighters[0].name] ) ) from Tribe $($fighters[0].value.tribe) will be battling $((Get-Culture).TextInfo.ToTitleCase($this.names[ $fighters[1].name] ) ) from Tribe $($fighters[1].value.tribe)."  );
+				$this.tellStory( "$($fighters[0].name) from Tribe $($fighters[0].tribe) will be battling $($fighters[1].name ) from Tribe $($fighters[1].tribe)."  );
 			}
 			return $fighters
 		}
